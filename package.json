@@ -1,0 +1,23 @@
+{
+  "name": "gmeet-clone",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+  "start":"node server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harshlyharsh/gmeet-clone.git"
+  },
+  "author": "Harsh Arora",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/harshlyharsh/gmeet-clone/issues"
+  },
+  "homepage": "https://github.com/harshlyharsh/gmeet-clone#readme",
+  "dependencies": {
+    "express": "^4.18.1",
+    "socket.io": "^4.5.1"
+  }
+}
