@@ -28,6 +28,7 @@ io.on("connection", (socket) => {
       socket.to(v.connectionId).emit("inform_others_about_me", {
         other_user_id: data.displayName,
         connId: socket.id,
+        userNumber: userCount,
       });
     });
     socket.emit("inform_me_about_other_user", other_users);
@@ -63,8 +64,10 @@ io.on("connection", (socket) => {
       );
       var list = userConnections.filter((p) => p.meeting_id == meetingid);
       list.forEach((v) => {
+        var userNumberAfUserLeave = userConnections.length;
         socket.to(v.connectionId).emit("inform_other_about_disconnected_user", {
           connId: socket.id,
+          uNumber: userNumberAfUserLeave,
         });
       });
     }
