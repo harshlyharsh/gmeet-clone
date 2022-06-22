@@ -370,6 +370,29 @@ var MyApp = (function () {
         }
       }
     });
+    socket.on("showFileMessage", function (data) {
+      var num_of_att = $(".left-align").length;
+      var added_mar = num_of_att * 10;
+      var mar_top = "-" + (135 + added_mar);
+      $(".g-details").css({ "margin-top": mar_top });
+
+      var time = new Date();
+      var lTime = time.toLocaleString("en-US", {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      });
+      var attachFileAreaForOther = document.querySelector(".show-attach-file");
+
+      attachFileAreaForOther.innerHTML +=
+        "<div class='left-align' style='display:flex; align-items:center;'><img src='public/assets/images/other.jpg' style='height:40px;width:40px;' class='caller-image circle'><div style='font-weight:600;margin:0 5px;'>" +
+        data.username +
+        "</div>:<div><a style='color:#007bff;' href='" +
+        data.filePath +
+        "' download>" +
+        data.fileName +
+        "</a></div></div><br/>";
+    });
     socket.on("inform_other_about_disconnected_user", function (data) {
       $("#" + data.connId).remove();
       $(".participant-count").text(data.uNumber);
@@ -542,6 +565,125 @@ var MyApp = (function () {
     $(this).addClass("active");
     $(".g-details-heading-attachment").removeClass("active");
   });
+  
+  var base_url = window.location.origin;
+  $(document).on("change", ".custom-file-input", function () {
+    var fileName = $(this).val().split("\\").pop();
+    $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
+  });
+  $(document).on("click", ".share-attach", function (e) {
+    e.preventDefault();
+    var att_img = $("#customFile").prop("files")[0];
+    var formData = new FormData();
+    formData.append("zipfile", att_img);
+    formData.append("meeting_id", meeting_id);
+    formData.append("username", user_id);
+    console.log(formData);
+    $.ajax({
+      url: base_url + "/attachimg",
+      type: "POST",
+      data: formData,
+      contentType: false,
+      processData: false,
+      success: function (response) {
+        console.log(response);
+      },
+      error: function () {
+        console.log("error");
+      },
+    });
+
+    var attachFileArea = document.querySelector(".show-attach-file");
+    var attachFileName = $("#customFile").val().split("\\").pop();
+    var attachFilePath =
+      "public/attachment/" + meeting_id + "/" + attachFileName;
+    attachFileArea.innerHTML +=
+      "<div class='left-align' style='display:flex; align-items:center;'><img src='public/assets/images/other.jpg' style='height:40px;width:40px;' class='caller-image circle'><div style='font-weight:600;margin:0 5px;'>" +
+      user_id +
+      "</div>:<div><a style='color:#007bff;' href='" +
+      attachFilePath +
+      "' download>" +
+      attachFileName +
+      "</a></div></div><br/>";
+    $("label.custom-file-label").text("");
+    socket.emit("fileTransferToOther", {
+      username: user_id,
+      meetingid: meeting_id,
+      filePath: attachFilePath,
+      fileName: attachFileName,
+    });
+  });
+  $(document).on("click", ".option-icon", function () {
+    $(".recording-show").toggle(300);
+  });
+  $(document).on("click", ".start-record", function () {
+    $(this)
+      .removeClass()
+      .addClass("stop-record btn-danger text-dark")
+      .text("Stop Recording");
+    startRecording();
+  });
+  $(document).on("click", ".stop-record", function () {
+    $(this)
+      .removeClass()
+      .addClass("start-record btn-dark text-danger")
+      .text("Start Recording");
+    mediaRecorder.stop();
+  });
+  var mediaRecorder;
+  var chunks = [];
+  async function captureScreen(
+    mediaContraints = {
+      video: true,
+    }
+  ) {
+    const screenStream = await navigator.mediaDevices.getDisplayMedia(
+      mediaContraints
+    );
+    return screenStream;
+  }
+  async function captureAudio(
+    mediaContraints = {
+      video: false,
+      audio: true,
+    }
+  ) {
+    const audioStream = await navigator.mediaDevices.getUserMedia(
+      mediaContraints
+    );
+    return audioStream;
+  }
+  async function startRecording() {
+    const screenStream = await captureScreen();
+    const audioStream = await captureAudio();
+    const stream = new MediaStream([
+      ...screenStream.getTracks(),
+      ...audioStream.getTracks(),
+    ]);
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.start();
+    mediaRecorder.onstop = function (e) {
+      var clipName = prompt("Enter a name for your recording");
+      stream.getTracks().forEach((track) => track.stop());
+      const blob = new Blob(chunks, {
+        type: "video/webm",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = clipName + ".webm";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+    };
+    mediaRecorder.ondataavailable = function (e) {
+      chunks.push(e.data);
+    };
+  }
   return {
     _init: function (uid, mid) {
       init(uid, mid);
