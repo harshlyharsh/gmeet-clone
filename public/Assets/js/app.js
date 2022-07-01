@@ -15,6 +15,8 @@ var AppProcess = (function () {
   };
   var video_st = video_states.None;
   var videoCamTrack;
+
+  // var io = io.connect("http://localhost:3000/")
   var rtp_vid_senders = [];
   async function _init(SDP_function, my_connid) {
     serverProcess = SDP_function;
@@ -53,6 +55,140 @@ var AppProcess = (function () {
         await videoProcess(video_states.Camera);
       }
     });
+
+
+    // const board = () => {
+    //   wb = document.querySelector("#sketch");
+    //   if (wb.style.display === "none") {
+    //     wb.style.display = "block";
+    //     document.querySelector("#wbShowHide").classList.add("bg-yellow");
+    //     drawOnCanvas();
+    //   }
+    //   else {
+    //     wb.style.display = "none";
+    //     document.querySelector("#wbShowHide").classList.remove("bg-yellow");
+    //   }
+    // }
+
+
+    // function changeState(mode) {
+    //   if (mode === 1) {
+    //     ctx.strokeStyle = 'blue';
+    //     ctx.lineWidth = 5;
+    //   }
+    //   else {
+    //     ctx.strokeStyle = 'white';
+    //     ctx.lineWidth = 8;
+    //   }
+    // }
+
+    // const changeMode = (a) => {
+    //   changeState(a);
+    // }
+
+
+
+    let canvas = document.getElementById('board');
+    canvas.style.width = '100%';
+    canvas.style.height = '80%';
+    let ctx = canvas.getContext('2d');
+
+    let x;
+    let y;
+    let mouseDown = false;
+
+    window.onmousedown = (e) => {
+      ctx.moveTo(x, y);
+      mouseDown = true;
+    };
+
+    window.onmouseup = (e) => {
+      mouseDown = false;
+    };
+
+    // io.on('ondraw', ({ x, y }) => {
+    //   ctx.lineTo(x, y);
+    //   ctx.stroke();
+
+    // })
+
+    window.onmousemove = (e) => {
+      x = e.clientX;
+      y = e.clientY;
+
+      if (mouseDown) {
+        // io.emit('draw', { x, y });
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+    }
+    // function drawOnCanvas() {
+    //   var ctx = this.ctx;
+
+    //   var sketch = document.querySelector('#sketch');
+    //   var sketch_style = getComputedStyle(sketch);
+    //   // Make it visually fill the positioned parent
+
+    //   // ...then set the internal size to match
+    //   canvas.width = canvas.offsetWidth;
+    //   canvas.height = canvas.offsetHeight;
+
+    //   var mouse = { x: 0, y: 0 };
+    //   var last_mouse = { x: 0, y: 0 };
+
+    //   //for clearing the board
+    //   document.getElementById('clr').addEventListener('click', function () {
+    //     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    //   }, false);
+
+    //   /* Mouse Capturing Work */
+    //   canvas.addEventListener('mousemove', function (e) {
+    //     last_mouse.x = mouse.x;
+    //     last_mouse.y = mouse.y;
+
+    //     mouse.x = e.pageX - this.offsetLeft;
+    //     mouse.y = e.pageY - this.offsetTop;
+    //   }, false);
+
+
+    //   /* Drawing on Paint App */
+    //   ctx.lineWidth = 5;
+    //   ctx.lineJoin = 'round';
+    //   ctx.lineCap = 'round';
+    //   ctx.strokeStyle = 'blue';
+    //   // setTimeout(()=>{
+    //   //   ctx.strokeStyle = (writeMode===1)?'blue':'white';  //choose pen or eraser (pen is 1 and eraser is 0)
+    //   // },100)
+
+    //   canvas.addEventListener('mousedown', function (e) {
+    //     canvas.addEventListener('mousemove', onPaint, false);
+    //   }, false);
+
+    //   canvas.addEventListener('mouseup', function () {
+    //     canvas.removeEventListener('mousemove', onPaint, false);
+    //   }, false);
+
+    //   var root = this;
+
+
+    //   var onPaint = function () {
+    //     ctx.beginPath();
+    //     ctx.moveTo(last_mouse.x, last_mouse.y);
+    //     ctx.lineTo(mouse.x, mouse.y);
+    //     ctx.closePath();
+    //     ctx.stroke();
+    //     if (root.timeout != undefined) clearTimeout(root.timeout);
+    //     root.timeout = setTimeout(function () {
+    //       var base64ImageData = canvas.toDataURL("image/png");
+    //       root.socket.emit("canvas-data", base64ImageData);
+    //     }, 1000)
+    //   };
+
+
+
+
+
+
 
     $("#ScreenShareOnOf").on("click", async function () {
       if (video_st == video_states.ScreenShare) {
@@ -196,6 +332,10 @@ var AppProcess = (function () {
       },
     ],
   };
+
+
+
+
   async function setConnection(connid) {
     var connection = new RTCPeerConnection(iceConfiguration);
 
@@ -370,6 +510,17 @@ var MyApp = (function () {
         }
       }
     });
+    socket.on("inform_other_about_disconnected_user", function (data) {
+      $("#" + data.connId).remove();
+      $(".participant-count").text(data.uNumber);
+      $("#participant_" + data.connId + "").remove();
+      AppProcess.closeConnectionCall(data.connId);
+    });
+    socket.on("inform_others_about_me", function (data) {
+      addUser(data.other_user_id, data.connId, data.userNumber);
+      AppProcess.setNewConnection(data.connId);
+    });
+
     socket.on("showFileMessage", function (data) {
       var num_of_att = $(".left-align").length;
       var added_mar = num_of_att * 10;
@@ -393,22 +544,14 @@ var MyApp = (function () {
         data.fileName +
         "</a></div></div><br/>";
     });
-    socket.on("inform_other_about_disconnected_user", function (data) {
-      $("#" + data.connId).remove();
-      $(".participant-count").text(data.uNumber);
-      $("#participant_" + data.connId + "").remove();
-      AppProcess.closeConnectionCall(data.connId);
-    });
-    socket.on("inform_others_about_me", function (data) {
-      addUser(data.other_user_id, data.connId,data.userNumber);
-      AppProcess.setNewConnection(data.connId);
-    });
+
+
     socket.on("inform_me_about_other_user", function (other_users) {
-      var userNumber=other_users.length;
-      var userNumb= userNumber+1;
+      var userNumber = other_users.length;
+      var userNumb = userNumber + 1;
       if (other_users) {
         for (var i = 0; i < other_users.length; i++) {
-          addUser(other_users[i].user_id, other_users[i].connectionId,userNumb);
+          addUser(other_users[i].user_id, other_users[i].connectionId, userNumb);
           AppProcess.setNewConnection(other_users[i].connectionId);
         }
       }
@@ -425,11 +568,11 @@ var MyApp = (function () {
       });
       var div = $("<div>").html(
         "<span class='font-weight-bold mr-3' style='color:black'>" +
-          data.from +
-          "</span>" +
-          lTime +
-          "</br>" +
-          data.message
+        data.from +
+        "</span>" +
+        lTime +
+        "</br>" +
+        data.message
       );
       $("#messages").append(div);
     });
@@ -446,15 +589,16 @@ var MyApp = (function () {
       });
       var div = $("<div>").html(
         "<span class='font-weight-bold mr-3' style='color:black'>" +
-          user_id +
-          "</span>" +
-          lTime +
-          "</br>" +
-          msgData
+        user_id +
+        "</span>" +
+        lTime +
+        "</br>" +
+        msgData
       );
       $("#messages").append(div);
       $("#msgbox").val("");
     });
+
     var url = window.location.href;
     $(".meeting_url").text(url);
 
@@ -462,6 +606,7 @@ var MyApp = (function () {
       this.requestFullscreen();
     });
   }
+
   function addUser(other_user_id, connId, userNum) {
     var newDivId = $("#otherTemplate").clone();
     newDivId = newDivId.attr("id", connId).addClass("other");
@@ -472,28 +617,32 @@ var MyApp = (function () {
     $("#divUsers").append(newDivId);
     $(".in-call-wrap-up").append(
       '<div class="in-call-wrap d-flex justify-content-between align-items-center mb-3" id="participant_' +
-        connId +
-        '"> <div class="participant-img-name-wrap display-center cursor-pointer"> <div class="participant-img"> <img src="public/Assets/images/other.jpg" alt="" class="border border-secondary" style="height: 40px;width: 40px;border-radius: 50%;"> </div> <div class="participant-name ml-2"> ' +
-        other_user_id +
-        '</div> </div> <div class="participant-action-wrap display-center"> <div class="participant-action-dot display-center mr-2 cursor-pointer"> <span class="material-icons"> more_vert </span> </div> <div class="participant-action-pin display-center mr-2 cursor-pointer"> <span class="material-icons"> push_pin </span> </div> </div> </div>'
+      connId +
+      '"> <div class="participant-img-name-wrap display-center cursor-pointer"> <div class="participant-img"> <img src="public/Assets/images/other.jpg" alt="" class="border border-secondary" style="height: 40px;width: 40px;border-radius: 50%;"> </div> <div class="participant-name ml-2"> ' +
+      other_user_id +
+      '</div> </div> <div class="participant-action-wrap display-center"> <div class="participant-action-dot display-center mr-2 cursor-pointer"> <span class="material-icons"> more_vert </span> </div> <div class="participant-action-pin display-center mr-2 cursor-pointer"> <span class="material-icons"> push_pin </span> </div> </div> </div>'
     );
     $(".participant-count").text(userNum);
   }
+
   $(document).on("click", ".people-heading", function () {
     $(".in-call-wrap-up").show(300);
     $(".chat-show-wrap").hide(300);
     $(this).addClass("active");
     $(".chat-heading").removeClass("active");
   });
+
   $(document).on("click", ".chat-heading", function () {
     $(".in-call-wrap-up").hide(300);
     $(".chat-show-wrap").show(300);
     $(this).addClass("active");
     $(".people-heading").removeClass("active");
   });
+
   $(document).on("click", ".meeting-heading-cross", function () {
     $(".g-right-details-wrap").hide(300);
   });
+
   $(document).on("click", ".top-left-participant-wrap", function () {
     $(".people-heading").addClass("active");
     $(".chat-heading").removeClass("active");
@@ -508,15 +657,17 @@ var MyApp = (function () {
     $(".in-call-wrap-up").hide(300);
     $(".chat-show-wrap").show(300);
   });
+
   $(document).on("click", ".end-call-wrap", function () {
     $(".top-box-show")
       .css({
         display: "block",
       })
       .html(
-        '<div class="top-box align-vertical-middle profile-dialogue-show"> <h4 class="mt-3" style="text-align:center;color:white;">Leave Meeting</h4> <hr> <div class="call-leave-cancel-action d-flex justify-content-center align-items-center w-100"> <a href="/action.html"><button class="call-leave-action btn btn-danger mr-5">Leave</button></a> <button class="call-cancel-action btn btn-secondary">Cancel</button> </div> </div>'
+        '<div class="top-box align-vertical-middle profile-dialogue-show"> <h4 class="mt-3" style="text-align:center;color:white;">Leave Meeting</h4> <hr> <div class="call-leave-cancel-action d-flex justify-content-center align-items-center w-100"> <a href="http://localhost:3000/"><button class="call-leave-action btn btn-danger mr-5">Leave</button></a> <button class="call-cancel-action btn btn-secondary">Cancel</button> </div> </div>'
       );
   });
+
   $(document).mouseup(function (e) {
     var container = new Array();
     container.push($(".top-box-show"));
@@ -526,6 +677,8 @@ var MyApp = (function () {
       }
     });
   });
+
+
   $(document).mouseup(function (e) {
     var container = new Array();
     container.push($(".g-details"));
@@ -536,8 +689,20 @@ var MyApp = (function () {
       }
     });
   });
+
   $(document).on("click", ".call-cancel-action", function () {
     $(".top-box-show").html("");
+  });
+  $(document).on("click", ".copy_info", function () {
+    var $temp = $("<input>");
+    $("body").append($temp);
+    $temp.val($(".meeting_url").text()).select();
+    document.execCommand("copy");
+    $temp.remove();
+    $(".link-conf").show();
+    setTimeout(function () {
+      $(".link-conf").hide();
+    }, 3000);
   });
   $(document).on("click", ".copy_info", function () {
     var $temp = $("<input>");
@@ -558,6 +723,7 @@ var MyApp = (function () {
     $(".g-details-heading-show-attachment").show();
     $(this).addClass("active");
     $(".g-details-heading-detail").removeClass("active");
+
   });
   $(document).on("click", ".g-details-heading-detail", function () {
     $(".g-details-heading-show").show();
@@ -565,12 +731,13 @@ var MyApp = (function () {
     $(this).addClass("active");
     $(".g-details-heading-attachment").removeClass("active");
   });
-  
   var base_url = window.location.origin;
+
   $(document).on("change", ".custom-file-input", function () {
     var fileName = $(this).val().split("\\").pop();
     $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
   });
+
   $(document).on("click", ".share-attach", function (e) {
     e.preventDefault();
     var att_img = $("#customFile").prop("files")[0];
@@ -616,6 +783,7 @@ var MyApp = (function () {
   $(document).on("click", ".option-icon", function () {
     $(".recording-show").toggle(300);
   });
+
   $(document).on("click", ".start-record", function () {
     $(this)
       .removeClass()
@@ -630,6 +798,7 @@ var MyApp = (function () {
       .text("Start Recording");
     mediaRecorder.stop();
   });
+
   var mediaRecorder;
   var chunks = [];
   async function captureScreen(
@@ -684,6 +853,7 @@ var MyApp = (function () {
       chunks.push(e.data);
     };
   }
+
   return {
     _init: function (uid, mid) {
       init(uid, mid);
